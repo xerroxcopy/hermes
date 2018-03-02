@@ -1,6 +1,6 @@
 library(poweRlaw)
 library(tidyverse)
-
+library(viridis)
 
 
 # for science: power-law -------------------------------------------------

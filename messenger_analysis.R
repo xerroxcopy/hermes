@@ -2,7 +2,6 @@ library(tidyverse)
 library(rstan)
 library(plyr)  # for ddply, https://stackoverflow.com/questions/18379933/plotting-cumulative-counts-in-ggplot2
 library(ggbeeswarm)
-library(poweRlaw)
 library(scales) # date_format
 library(viridis)
 library(ggridges)
@@ -28,7 +27,7 @@ data <- read_csv("input/20180221_messages.csv") %>%
   arrange(desc(date))
 save(data, file = paste0("data/", Sys.Date(), "messeenger_data.Rdata"))
 
-load("data/2018-02-21messenger_data.Rdata") # the file name depends on the date you saved the file
+load("data/2018-03-02messeenger_data.Rdata") # the file name depends on the date you saved the file
 
 
 # plot --------------------------------------------------------------------
@@ -176,7 +175,7 @@ df %>%
     position = "identity", 
     # alpha = 0.5,
     bw = 5 * 10 ^ 5 # change this value to get detailed<->smoothed plot
-    ) +
+  ) +
   geom_vline(xintercept = as.POSIXct(Sys.Date()), linetype = "longdash", size = 0.1) +
   # scale_fill_viridis(discrete = TRUE, option = "D") + # discrete = TRUE
   scale_colour_brewer("sender",
@@ -193,6 +192,7 @@ df %>%
     legend.position = c(0.01,0.99)
     # aspect.ratio = 1
   ) 
+
 # save plot
 ggsave(paste0("output/messenger_", Sys.Date(), "_beeswarm.pdf"), width = 250, height = 200, unit = "mm")
 
@@ -241,6 +241,7 @@ data %>%
     panel.background = element_rect(fill = "black"),
     # aspect.ratio = 
   ) 
+
 # save plot
 ggsave(paste0("output/messenger_", Sys.Date(), "_transitionridges.pdf"), width = 200, height = 150, unit = "mm")
 # hour --------------------------------------------------------------------
@@ -301,12 +302,20 @@ hourlyplot <-
     axis.text.y =element_blank(),axis.title=element_blank(),
     panel.grid.minor = element_line(colour = NA), # white? grey?
   ) # https://stackoverflow.com/questions/7830022/rotate-x-axis-text-in-ggplot2-when-using-coord-polar
+
+# save plot
 ggsave(hourlyplot, file = paste0("output/messenger_", Sys.Date(), "_hourlydata.pdf"), width = 200, height = 150, unit = "mm")
+
+
+# facet by senders
+
 hourlyplot +   
   facet_wrap(~reorder(x = sender, 
                       X = date, 
-                      FUN = min), ncol = 7) +
-  ggsave(paste0("output/messenger_", Sys.Date(), "_hourlydata_individual.pdf"), width = 400, height = 300, unit = "mm")
+                      FUN = min), ncol = 7) 
+
+# save plot
+ggsave(paste0("output/messenger_", Sys.Date(), "_hourlydata_individual.pdf"), width = 400, height = 300, unit = "mm")
 
 # hour plot, year transition ----------------------------------------------
 df <-
@@ -407,6 +416,8 @@ df %>%
     # axis.text.y =element_blank(),axis.title=element_blank(),
     panel.grid.minor = element_line(colour = NA), # white? grey?
     NULL) # https://stackoverflow.com/questions/7830022/rotate-x-axis-text-in-ggplot2-when-using-coord-polar
+
+# save plot
 ggsave(hourlyplot, file = paste0("output/messenger_", Sys.Date(), "_hour_year.pdf"), width = 200, height = 150, unit = "mm")
 # message length -----------------------------------------------------------
 df_ml <- 
@@ -454,54 +465,12 @@ df_ml %>%
     legend.position = "none",
     panel.background = element_rect(fill = "black"),
     # aspect.ratio = 
-  ) +
-  ggsave(paste0("output/messenger_", Sys.Date(), "_MessageLength.pdf"), width = 200, height = 150, unit = "mm")
-
-
-# for science: power-law -------------------------------------------------
-
-aggr_data <- data %>%
-  filter(sender == thread) %>% # avoid group conv
-  group_by(sender) %>% 
-  dplyr::summarise(count = n()) %>% 
-  arrange(desc(count)) %>%
-  filter(sender != my_name)
-
-power_law <- displ$new(aggr_data$count)
-log_normal <- dislnorm$new(aggr_data$count)
-# power_law$setXmin(estimate_xmin(power_law))
-power_law$setXmin(1)
-log_normal$setXmin(1)
-power_law$setPars(estimate_pars(power_law))
-log_normal$setPars(estimate_pars(log_normal))
-plot(power_law)
-lines(power_law)
-lines(log_normal)
-df_pl <- plot(power_law)
-df_pl2 <- left_join(aggr_data, df_pl, by = c("count" = "x"))
-# latest message
-last_date <- data %>% 
-  group_by(sender) %>%
-  filter(date == max(date)) %>% 
-  distinct(sender, .keep_all = TRUE) # http://a-habakiri.hateblo.jp/entry/2016/11/29/215013 .を忘れず
-# merge them
-df_pl3 <- left_join(df_pl2, last_date, by = "sender")
-
-ggplot(df_pl3, aes(count, y, colour = date)) +
-  geom_point(size = 2) +
-  # geom_text(check_overlap = FALSE, aes(label = sender), size = 1, 
-  #           # position = position_jitter(width = 0.4, height = 0), 
-  #           alpha = 0.8, 
-  #           hjust = 0, nudge_x = 0.05
-  #           ) +
-  scale_x_continuous(trans = "log10", breaks = 10^(0:10))+
-  scale_y_continuous(trans = "log10") +
-  scale_colour_viridis(breaks = daybreak) + # discrete = TRUE
-  theme_light() +
-  theme(aspect.ratio = 1,
-        # legend.position = "none"
   ) 
-ggsave(paste0("output/messenger_", Sys.Date(), "_powerlaw.pdf"), width = 200, height = 150, unit = "mm")
+
+# save plot
+ggsave(paste0("output/messenger_", Sys.Date(), "_MessageLength.pdf"), width = 200, height = 150, unit = "mm")
+
+
 
 # power-law on message length ---------------------------------------------
 power_law <- displ$new(na.omit(df_ml$message_length))
@@ -524,7 +493,9 @@ ggplot(df_pl, aes(x, y)) +
   ggtheme(14) +
   theme(aspect.ratio = 1,
         # legend.position = "none"
-  ) +
-  ggsave(paste0("output/messenger_", Sys.Date(), "_MessageLength_powerlaw.pdf"), width = 200, height = 150, unit = "mm")
+  ) 
+
+# save plot
+ggsave(paste0("output/messenger_", Sys.Date(), "_MessageLength_powerlaw.pdf"), width = 200, height = 150, unit = "mm")
 
 
